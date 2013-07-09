@@ -1,7 +1,7 @@
 Puppet::Type.type(:netdev_interface).provide(:cumulus) do
 
   commands :ethtool  => '/sbin/ethtool',
-           :iplink => '/sbin/ip'
+    :iplink => '/sbin/ip'
 
   mk_resource_methods
 
@@ -60,13 +60,18 @@ Puppet::Type.type(:netdev_interface).provide(:cumulus) do
       iplink(['-oneline','link','show']).lines.select {|i| /link\/ether/ =~ i}.
       each.collect do |intf|
         _, name, params = intf.split(':', 3).map {|c| c.strip }
+        name, _ = name.split '@' #take care of the sub-interfaces in format "eth1.100@eth1"
         out = ethtool(name)
+        duplex = value(out, 'duplex', ':')
+        duplex = duplex ? duplex_to_netdev(duplex) : :absent
+        speed = value(out, 'speed', ':')
+        speed = speed ? speed_to_netdev(speed): :absent
         new(:name => name,
             :description => name,
             :mtu => value(params, 'mtu').to_i,
             :up => value(params, 'state').downcase,
-            :duplex => duplex_to_netdev(value(out, 'duplex', ':')),
-            :speed => speed_to_netdev(value(out, 'speed', ':')),
+            :duplex => duplex,
+            :speed => speed,
             :ensure => :present
             )
       end
