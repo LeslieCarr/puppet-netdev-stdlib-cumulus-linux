@@ -30,7 +30,7 @@ Puppet::Type.type(:netdev_vlan).provide(:cumulus) do
         collect{|br| File.basename br }
       bridges.each.collect do |bridge_name|
         _, vlan = bridge_name.split NAME_SEP
-        vlan_id = vlan_id ? vlan.to_i : :absent
+        vlan_id = vlan ? vlan.to_i : :absent
         new ({:ensure => :present,
               :name => bridge_name,
               :vlan_id => vlan_id})

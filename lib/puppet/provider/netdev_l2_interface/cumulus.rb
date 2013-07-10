@@ -1,8 +1,27 @@
 Puppet::Type.type(:netdev_l2_interface).provide(:cumulus) do
 
-  commands  :iplink => '/sbin/ip'
+  commands  :iplink => '/sbin/ip', :brctl =>'/sbin/brctl'
 
   mk_resource_methods
+
+  def create
+    begin
+      # brctl(['addif', resource[:untagged_vlan], resource[:name]]) if resource[:untagged_vlan]
+      resource[:tagged_vlans].flatten.each do |vlan|
+        _, id = vlan.split '_'
+        sub_if = "#{resource[:name]}.#{id}"
+        begin
+          iplink(['link', 'show', sub_if])
+        rescue
+          iplink(['link', 'add', 'link', resource[:name], 'name', sub_if, 'type', 'vlan', 'id', id])
+        end
+        brctl(['addif', vlan, sub_if])
+      end if resource[:tagged_vlans]
+    rescue
+      #Could not create
+      false
+    end
+  end
 
   def exists?
     @property_hash[:ensure] == :present
@@ -24,7 +43,6 @@ Puppet::Type.type(:netdev_l2_interface).provide(:cumulus) do
                 link_master(File.basename subi)
               end,
               :ensure => :present})
-
       end
     end
   end
