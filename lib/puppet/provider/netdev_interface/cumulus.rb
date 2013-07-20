@@ -1,3 +1,4 @@
+require File.expandpath(File.join(File.dirname(__FILE__), '..', '..', , '..', 'puppet_x', 'cumulus', 'interfaces.rb'))
 Puppet::Type.type(:netdev_interface).provide(:cumulus) do
 
   commands :ethtool  => '/sbin/ethtool',
@@ -22,18 +23,22 @@ Puppet::Type.type(:netdev_interface).provide(:cumulus) do
 
   def admin=(value)
     iplink(['link', 'set', resource[:name], value])
+    @property_hash[:up] = value
   end
 
   def mtu=(value)
     iplink(['link', 'set', resource[:name], 'mtu', value])
+    @property_hash[:mtu] = value
   end
 
   def speed=(value)
     ethtool('-s', resource[:name], 'speed', netdev_to_speed(value)) if value != :auto
+    @property_hash[:speed] = value
   end
 
   def duplex=(value)
     ethtool('-s', resource[:name], 'duplex', value) if value != :auto
+    @property_hash[:duplex] = value
   end
 
   ###### Util methods ######
