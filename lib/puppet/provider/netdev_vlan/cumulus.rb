@@ -1,6 +1,7 @@
 Puppet::Type.type(:netdev_vlan).provide(:cumulus) do
 
-  commands :brctl =>'/sbin/brctl'
+  commands :brctl =>'/sbin/brctl',
+           :iplink => '/sbin/ip'
 
   SYSFS_NET_PATH = "/sys/class/net"
   NAME_SEP = '_'
@@ -12,10 +13,15 @@ Puppet::Type.type(:netdev_vlan).provide(:cumulus) do
         raise ArgumentError, "VLAN name must be in format <name>#{NAME_SEP}<VLAN ID>"
     end
     brctl(['addbr', resource[:name]])
+    iplink(['link', 'set', 'dev', resource[:name], 'up'])
   end
 
   def destroy
     brctl(['delbr', resource[:name]])
+  end
+
+  def name=(value)
+    raise "VLAN can not be renamed."
   end
 
   def exists?
