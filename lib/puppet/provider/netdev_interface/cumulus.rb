@@ -6,6 +6,11 @@ Puppet::Type.type(:netdev_interface).provide(:cumulus) do
 
   mk_resource_methods
 
+  def initizlize(value={})
+    super(value)
+    @property_flush = {}
+  end
+
   def exists?
     @property_hash[:ensure] == :present
   end
@@ -22,23 +27,50 @@ Puppet::Type.type(:netdev_interface).provide(:cumulus) do
   end
 
   def admin=(value)
-    iplink(['link', 'set', resource[:name], value])
-    @property_hash[:up] = value
+    # iplink(['link', 'set', resource[:name], value])
+    # @property_hash[:up] = value
+    @property_flush[:up] = value
   end
 
   def mtu=(value)
-    iplink(['link', 'set', resource[:name], 'mtu', value])
-    @property_hash[:mtu] = value
+    # iplink(['link', 'set', resource[:name], 'mtu', value])
+    # @property_hash[:mtu] = value
+    @property_flush[:mtu] = value
   end
 
   def speed=(value)
-    ethtool('-s', resource[:name], 'speed', netdev_to_speed(value)) if value != :auto
-    @property_hash[:speed] = value
+    # ethtool('-s', resource[:name], 'speed', netdev_to_speed(value)) if value != :auto
+    # @property_hash[:speed] = value
+    @property_flush[:speed] = value
   end
 
   def duplex=(value)
-    ethtool('-s', resource[:name], 'duplex', value) if value != :auto
-    @property_hash[:duplex] = value
+    # ethtool('-s', resource[:name], 'duplex', value) if value != :auto
+    # @property_hash[:duplex] = value
+    @property_flush[:duplex] = value
+  end
+
+  def flush
+    ip_options = []
+    eth_options = []
+    if @property_flush
+      (ip_options << resource[:up]) if @property_flush[:up]
+      (ip_options << 'mtu' << resource[:mtu]) if @property_flush[:mtu]
+    end
+    unless ip_options.empty?
+      ip_options.unshift ['link', 'set', resource[:name]]
+      iplink ip_options
+    end
+
+    if @property_flush
+      (eth_options << 'speed' << netdev_to_speed resource[:speed]) if @property_flush[:speed]
+      (eth_options << 'duplex' << resource[:duplex]) if @property_flush[:duplex]
+    end
+    unless eth_options.empty?
+        eth_options.unshift ['-s', resource[:name]]
+        ethtool eth_options
+    end
+    @property_hash = resource.to_hash
   end
 
   ###### Util methods ######
