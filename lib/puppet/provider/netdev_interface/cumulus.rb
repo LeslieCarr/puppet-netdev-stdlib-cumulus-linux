@@ -1,4 +1,4 @@
-require File.expandpath(File.join(File.dirname(__FILE__), '..', '..', , '..', 'puppet_x', 'cumulus', 'interfaces.rb'))
+require File.expandpath(File.join(File.dirname(__FILE__), '..', '..', '..', 'puppet_x', 'cumulus', 'interfaces.rb'))
 Puppet::Type.type(:netdev_interface).provide(:cumulus) do
 
   commands :ethtool  => '/sbin/ethtool',
@@ -67,8 +67,8 @@ Puppet::Type.type(:netdev_interface).provide(:cumulus) do
       (eth_options << 'duplex' << resource[:duplex]) if @property_flush[:duplex]
     end
     unless eth_options.empty?
-        eth_options.unshift ['-s', resource[:name]]
-        ethtool eth_options
+      eth_options.unshift ['-s', resource[:name]]
+      ethtool eth_options
     end
     @property_hash = resource.to_hash
   end
