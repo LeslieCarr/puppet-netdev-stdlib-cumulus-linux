@@ -1,5 +1,4 @@
 require File.join(File.dirname(__FILE__), '..', '..', '..', 'puppet_x', 'cumulus', 'utils.rb')
-
 Puppet::Type.type(:netdev_lag).provide(:cumulus) do
 
   commnads :iplink => '/sbin/ip'
@@ -27,7 +26,7 @@ Puppet::Type.type(:netdev_lag).provide(:cumulus) do
       each.collect do |bond|
         _, name, params = bond.split(':', 3).map {|c| c.strip }
         new(:name => name,
-            :active => Puppet::Puppet_X::Cumulus::Utils.value(params, 'state').downcase,
+            :active => Puppet_X::Cumulus::Utils.value(params, 'state').downcase,
             :ensure => :present
             )
       end
@@ -35,3 +34,4 @@ Puppet::Type.type(:netdev_lag).provide(:cumulus) do
     end
 
   end
+end

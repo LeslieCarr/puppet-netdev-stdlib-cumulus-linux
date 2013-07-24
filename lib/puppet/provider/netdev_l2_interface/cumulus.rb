@@ -23,6 +23,11 @@ Puppet::Type.type(:netdev_l2_interface).provide(:cumulus) do
     end
   end
 
+  def destroy
+    iplink(['link', 'set', resource[:name], 'down'])
+    brctl(['delbr', resource[:name]])
+  end
+
   def exists?
     @property_hash[:ensure] == :present
   end

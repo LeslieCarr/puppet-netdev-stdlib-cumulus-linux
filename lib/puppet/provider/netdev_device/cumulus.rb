@@ -1,5 +1,5 @@
 Puppet::Type.type(:netdev_device).provide(:cumulus) do
-    confine :operatingsystem => :cumuluslinux
+  confine :operatingsystem => :cumuluslinux
 
   def exists?
     true
@@ -11,5 +11,12 @@ Puppet::Type.type(:netdev_device).provide(:cumulus) do
 
   def destroy
     raise "Can not destroy"
+  end
+
+  # def name
+  # end
+
+  def self.instances
+    []
   end
 end
