@@ -20,9 +20,8 @@ Puppet::Type.type(:netdev_lag).provide(:cumulus) do
     @provide_hash[:ensure] = :absent
   end
 
-  class << self
-    def intances
-      iplink(['-oneline','link','show']).lines.select {|i| /\d+\s (bond\d+)/ =~ i}.
+  def self.intances
+    iplink(['-oneline','link','show']).lines.select {|i| /\d+\s (bond\d+)/ =~ i}.
       each.collect do |bond|
         _, name, params = bond.split(':', 3).map {|c| c.strip }
         new(:name => name,
@@ -30,8 +29,15 @@ Puppet::Type.type(:netdev_lag).provide(:cumulus) do
             :ensure => :present
             )
       end
-
-    end
-
   end
+
+  def self.prefetch(resources)
+    lags = instances
+    resources.each do |name, params|
+      if provider = lags.find { |lag| lag.name == params[:name] }
+        resources[name].provider = provider
+      end
+    end
+  end
+
 end

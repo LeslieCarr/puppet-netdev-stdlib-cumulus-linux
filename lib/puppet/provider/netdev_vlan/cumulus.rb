@@ -25,15 +25,6 @@ Puppet::Type.type(:netdev_vlan).provide(:cumulus) do
     @property_hash[:ensure] == :present
   end
 
-  def description=(value)
-    raise "Can not modify VLAN description"
-  end
-
-  def active=(value)
-    status = value ? 'up': 'down'
-    iplink(['link', 'set', 'dev', resource[:name], status])
-  end
-
   def name=(value)
     raise "VLAN can not be renamed."
   end
@@ -44,32 +35,27 @@ Puppet::Type.type(:netdev_vlan).provide(:cumulus) do
     brctl(['setageing', resource[:name], value ? 0 : DEFAULT_AGING_TIME])
   end
 
-
-
-  class << self
-
-    def instances
-      bridges = Dir[File.join SYSFS_NET_PATH, '*'].
-        select{|dir| File.directory? File.join dir, 'bridge'}.
-        collect{|br| File.basename br }
-      bridges.each.collect do |bridge_name|
-        _, vlan = bridge_name.split NAME_SEP
-        vlan_id = vlan ? vlan.to_i : :absent
-        aging_time = File.read(File.join SYSFS_NET_PATH, bridge_name, 'bridge', 'ageing_time')
-        new ({:ensure => :present,
-              :name => bridge_name,
-              :description => bridge_name,
-              :no_mac_learning => (aging_time.to_i) / 100 == 0,
-              :vlan_id => vlan_id})
-      end
+  def self.instances
+    bridges = Dir[File.join SYSFS_NET_PATH, '*'].
+      select{|dir| File.directory? File.join dir, 'bridge'}.
+      collect{|br| File.basename br }
+    bridges.each.collect do |bridge_name|
+      _, vlan = bridge_name.split NAME_SEP
+      vlan_id = vlan ? vlan.to_i : :absent
+      aging_time = File.read(File.join SYSFS_NET_PATH, bridge_name, 'bridge', 'ageing_time')
+      new ({:ensure => :present,
+            :name => bridge_name,
+            :description => bridge_name,
+            :no_mac_learning => (aging_time.to_i) / 100 == 0,
+            :vlan_id => vlan_id})
     end
+  end
 
-    def prefetch(resources)
-      interfaces = instances
-      resources.each do |name, params|
-        if provider = interfaces.find { |interface| interface.name == params[:name] }
-          resources[name].provider = provider
-        end
+  def self.prefetch(resources)
+    interfaces = instances
+    resources.each do |name, params|
+      if provider = interfaces.find { |interface| interface.name == params[:name] }
+        resources[name].provider = provider
       end
     end
   end

@@ -13,10 +13,4 @@ Puppet::Type.type(:netdev_device).provide(:cumulus) do
     raise "Can not destroy"
   end
 
-  # def name
-  # end
-
-  def self.instances
-    []
-  end
 end
