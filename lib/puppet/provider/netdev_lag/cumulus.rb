@@ -1,4 +1,4 @@
-require File.expandpath(File.join(File.dirname(__FILE__), '..', '..', , '..', 'puppet_x', 'cumulus', 'utils.rb'))
+require File.join(File.dirname(__FILE__), '..', '..', '..', 'puppet_x', 'cumulus', 'utils.rb')
 
 Puppet::Type.type(:netdev_lag).provide(:cumulus) do
 

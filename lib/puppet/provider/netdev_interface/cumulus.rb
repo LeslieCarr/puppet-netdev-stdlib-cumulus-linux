@@ -1,4 +1,4 @@
-require File.expandpath(File.join(File.dirname(__FILE__), '..', '..', '..', 'puppet_x', 'cumulus', 'interfaces.rb'))
+require File.join(File.dirname(__FILE__), '..', '..', '..', 'puppet_x', 'cumulus', 'interfaces.rb')
 Puppet::Type.type(:netdev_interface).provide(:cumulus) do
 
   commands :ethtool  => '/sbin/ethtool',
@@ -54,8 +54,8 @@ Puppet::Type.type(:netdev_interface).provide(:cumulus) do
     ip_options = []
     eth_options = []
     if @property_flush
-      (ip_options << resource[:up]) if @property_flush[:up]
-      (ip_options << 'mtu' << resource[:mtu]) if @property_flush[:mtu]
+      (ip_options << @property_flush[:up]) if @property_flush[:up]
+      (ip_options << 'mtu' << @property_flush[:mtu]) if @property_flush[:mtu]
     end
     unless ip_options.empty?
       ip_options.unshift ['link', 'set', resource[:name]]
@@ -63,8 +63,8 @@ Puppet::Type.type(:netdev_interface).provide(:cumulus) do
     end
 
     if @property_flush
-      (eth_options << 'speed' << netdev_to_speed resource[:speed]) if @property_flush[:speed]
-      (eth_options << 'duplex' << resource[:duplex]) if @property_flush[:duplex]
+      (eth_options << 'speed' << netdev_to_speed(@property_flush[:speed])) if @property_flush[:speed]
+      (eth_options << 'duplex' << @property_flush[:duplex]) if @property_flush[:duplex]
     end
     unless eth_options.empty?
       eth_options.unshift ['-s', resource[:name]]
