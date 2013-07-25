@@ -1,7 +1,7 @@
 require File.join(File.dirname(__FILE__), '..', '..', '..', 'puppet_x', 'cumulus', 'utils.rb')
 Puppet::Type.type(:netdev_lag).provide(:cumulus) do
 
-  commnads :iplink => '/sbin/ip'
+  commands :iplink => '/sbin/ip'
 
   def exists?
     @property_hash[:ensure] == :present
@@ -20,7 +20,7 @@ Puppet::Type.type(:netdev_lag).provide(:cumulus) do
     @provide_hash[:ensure] = :absent
   end
 
-  def self.intances
+  def self.instances
     iplink(['-oneline','link','show']).lines.select {|i| /\d+\s (bond\d+)/ =~ i}.
       each.collect do |bond|
         _, name, params = bond.split(':', 3).map {|c| c.strip }
