@@ -1,43 +1,37 @@
-module CanAccessInterfaces
-  NETWORK_INTERFACES = '/etc/newtork/interfaces'
+class NetworkInterfaces
+  NETWORK_INTERFACES = '/etc/network/interfaces'
 
-  def all_interfaces
+  def self.all_interfaces
     @interfaces ||= {}
   end
 
-  def all_mapping
+  def self.all_mapping
     @mapping ||={}
   end
 
-  def all_source
-    @source ||=[]
+  def self.all_sources
+    @sources ||=[]
   end
 
   def self.clear
     @interfaces = {}
     @mapping = {}
-    @source = []
+    @sources = []
   end
 
   def interface name
-    if all_interfaces[name]
-      intf = all_interfaces[name]
-    else
-      intf = Interface.new(name)
-      all_interfaces[name] = intf
-    end
-    intf
+    self[name]
   end
 
-  # def self.[](name)
-  #   if all_interfaces[name]
-  #     interface = all_interfaces[name]
-  #   else
-  #     interface = Interface.new(name)
-  #     all_interfaces[name] = interface
-  #   end
-  #   interface
-  # end
+  def self.[](name)
+    if all_interfaces[name]
+      interface = all_interfaces[name]
+    else
+      interface = Interface.new(name)
+      all_interfaces[name] = interface
+    end
+    interface
+  end
 
   def self.parse(file=NETWORK_INTERFACES)
     #The file consists of zero or more "iface", "mapping", "auto", "allow-" and "source" stanzas.
@@ -75,7 +69,7 @@ module CanAccessInterfaces
         # configure the interface. Additional  options  can  be  given
         # on subsequent lines in the stanza.
         _, name, family, method = line.split
-        currently_processing = interface(name)
+        currently_processing = self[name]
         currently_processing.family = family
         currently_processing.method = method
       when /^mapping/
@@ -105,7 +99,7 @@ module CanAccessInterfaces
         # Note that "allow-auto"  and "auto" are synonyms
         ups = line.split
         ups.shift
-        ups.each { |i| interface(i).onboot = true }
+        ups.each { |i| self[i].onboot = true }
         currently_processing = nil
       when /^allow\-/
         next
@@ -116,7 +110,7 @@ module CanAccessInterfaces
         # sourced.
         src = line.split
         src.shift
-        @source << src
+        @sources << src
       else
         # Process data that belongs to current stanza
         case currently_processing
@@ -147,39 +141,77 @@ module CanAccessInterfaces
 
   def self.flush(file=NETWORK_INTERFACES)
     # Flush content to file
-    content = "%{header}\n\n%{auto}\n\n%{interface}\n\n%{mapping}\n%{source}\n" %
+    content = "%s\n\n auto %s\n\n%s\n\n%s\n%s\n" %
+    [
+      header,
+      all_interfaces.select { |k, v| v.onboot == true }.collect { |k, v| k }.join(" "),
+      all_interfaces.collect { |k, v| v.to_formatted_s }.join("\n"),
+      all_mapping.collect { |i| i.to_formatted_s }.join("\n"),
+      all_sources.collect { |i| "source #{i}" }.join("\n")
+    ]
+    File.open(file, 'w') {|f| f.write(content) }
+  end
+
+end
+
+
+class Interface
+  attr_reader :name
+  attr_accessor :up, :speed, :mtu, :duplex,
+    :ip_address, :netmask, :gateway, :method,
+    :family, :onboot, :hotplug, :options
+
+  def initialize(name)
+    @name = name
+    @onboot = false
+    @options = Hash.new { |hash, key| hash[key] = [] }
+  end
+
+  def to_formatted_s
+    out = []
+    out << "iface #{name} #{family} #{method}"
+
     {
-      :header => header,
-      :auto => all_interfaces.select { |k, v| v.onboot == true }.collect { |k, v| k }.join(" "),
-      :interface => all_interfaces.collect { |k, v| v.to_formatted_s }.join("\n"),
-      :mapping => all_mapping.collect { |i| i.to_formatted_s }.join("\n"),
-      :source => all_sources.collect { |i| "source #{i}" }.join("\n")
-    }
-    content
-  end
-
-
-  class Mapping
-    # just to make interface file parsing consistent
-    attr_reader :glob
-
-    def initialize(glob)
-      @glob = glob
+      :ip_address => 'address',
+      :netmask => 'netmask',
+      :mtu => 'mtu'
+    }.each do |property, section|
+      out << "  #{section} #{self.send property}" if self.send(property)
     end
-  end
 
-  class Interface
-    attr_reader :name
-    attr_accessor :up, :speed, :mtu, :duplex,
-      :ip_address, :netmask, :gateway, :method,
-      :family, :onboot, :hotplug, :options
-
-    def initialize(name)
-      @name = name
-      @onboot = false
-      @options = Hash.new { |hash, key| hash[key] = [] }
+    if self.options
+      self.options.each_pair do |key, val|
+        if val.is_a? String
+          stanza << "  #{key} #{val}"
+        elsif val.is_a? Array
+          val.each { |entry| out << "  #{key} #{entry}" }
+        end
+      end
     end
+    out.join("\n")
   end
 
 
+end
+
+class Mapping
+  # just to make interface file parsing consistent
+  attr_reader :glob
+
+  def initialize(glob)
+    @glob = glob
+  end
+
+  def to_formatted_s
+  end
+
+end
+
+class Vlan < Interface
+end
+
+class Bond < Interface
+end
+
+class Lag < Interface
 end

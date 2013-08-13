@@ -1,4 +1,6 @@
 require File.join(File.dirname(__FILE__), '..', '..', '..', 'puppet_x', 'cumulus', 'interfaces.rb')
+require File.join(File.dirname(__FILE__), '..', 'cumulus', 'network_interfaces.rb')
+
 Puppet::Type.type(:netdev_interface).provide(:cumulus) do
 
   commands :ethtool  => '/sbin/ethtool',
@@ -6,9 +8,12 @@ Puppet::Type.type(:netdev_interface).provide(:cumulus) do
 
   mk_resource_methods
 
+
+
   def initialize(value={})
     super(value)
     @property_flush = {}
+    NetworkInterfaces.parse
   end
 
   def exists?
@@ -52,6 +57,8 @@ Puppet::Type.type(:netdev_interface).provide(:cumulus) do
     unless ip_options.empty?
       ip_options.unshift ['link', 'set', resource[:name]]
       iplink ip_options
+      NetworkInterfaces[resource[:name]].onboot = true if @property_flush[:admin]
+      NetworkInterfaces[resource[:name]].mtu = resource[:mtu] if @property_flush[:mtu]
     end
 
     if @property_flush
@@ -66,7 +73,11 @@ Puppet::Type.type(:netdev_interface).provide(:cumulus) do
     unless eth_options.empty?
       eth_options.unshift ['-s', resource[:name]]
       ethtool eth_options
+
+      NetworkInterfaces[resource[:name]].speed = true if @property_flush[:speed]
+      NetworkInterfaces[resource[:name]].duplex = resource[:mtu] if @property_flush[:duplex]
     end
+    NetworkInterfaces.flush
     @property_hash = resource.to_hash
   end
 
