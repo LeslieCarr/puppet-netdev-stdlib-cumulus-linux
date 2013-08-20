@@ -27,9 +27,9 @@ Puppet::Type.type(:netdev_vlan).provide(:cumulus) do
     NetworkInterfaces[resource[:name]].method = 'manual'
     NetworkInterfaces[resource[:name]].onboot = true
     NetworkInterfaces[resource[:name]].options['bridge_stp'] << 'on'
-    NetworkInterfaces[resource[:name]].options['bridge_maxwait'] << 20
-    NetworkInterfaces[resource[:name]].options['bridge_ageing'] << 200
-    NetworkInterfaces[resource[:name]].options['bridge_fd'] << 30
+    NetworkInterfaces[resource[:name]].options['bridge_maxwait'] << [20]
+    NetworkInterfaces[resource[:name]].options['bridge_ageing'] << [200]
+    NetworkInterfaces[resource[:name]].options['bridge_fd'] << [30]
   end
 
   def destroy
@@ -62,6 +62,7 @@ Puppet::Type.type(:netdev_vlan).provide(:cumulus) do
       brctl(['setageing', resource[:name], ageing])
       NetworkInterfaces[resource[:name]].options['bridge_ageing'] = [ageing]
     end
+    NetworkInterfaces.flush
   end
 
 

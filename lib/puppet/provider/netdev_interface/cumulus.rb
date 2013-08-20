@@ -1,14 +1,12 @@
-require File.join(File.dirname(__FILE__), '..', '..', '..', 'puppet_x', 'cumulus', 'interfaces.rb')
-require File.join(File.dirname(__FILE__), '..', 'cumulus', 'network_interfaces.rb')
+$LOAD_PATH.unshift(File.join(File.dirname(__FILE__),"..","..",".."))
+require 'puppet/provider/cumulus/cumulus_parent'
+require 'puppet/provider/cumulus/network_interfaces'
 
-Puppet::Type.type(:netdev_interface).provide(:cumulus) do
+Puppet::Type.type(:netdev_interface).provide(:cumulus, :parent => Puppet::Provider::Cumulus) do
 
-  commands :ethtool  => '/sbin/ethtool',
-    :iplink => '/sbin/ip'
+  commands :ethtool  => '/sbin/ethtool', :iplink => '/sbin/ip'
 
   mk_resource_methods
-
-
 
   def initialize(value={})
     super(value)
@@ -47,7 +45,7 @@ Puppet::Type.type(:netdev_interface).provide(:cumulus) do
     @property_flush[:duplex] = value
   end
 
-  def flush
+  def apply
     ip_options = []
     eth_options = []
     if @property_flush
@@ -57,12 +55,10 @@ Puppet::Type.type(:netdev_interface).provide(:cumulus) do
     unless ip_options.empty?
       ip_options.unshift ['link', 'set', resource[:name]]
       iplink ip_options
-      NetworkInterfaces[resource[:name]].onboot = true if @property_flush[:admin]
-      NetworkInterfaces[resource[:name]].mtu = resource[:mtu] if @property_flush[:mtu]
     end
 
     if @property_flush
-      (eth_options << 'speed' << netdev_to_speed(resource[:speed])) if @property_flush[:speed]
+      (eth_options << 'speed' << LinkSpeed.to_ethtool(resource[:speed])) if @property_flush[:speed]
       case @property_flush[:duplex]
       when 'full', 'half'
         (eth_options << 'duplex' << resource[:duplex] << 'autoneg' << 'off')
@@ -73,29 +69,18 @@ Puppet::Type.type(:netdev_interface).provide(:cumulus) do
     unless eth_options.empty?
       eth_options.unshift ['-s', resource[:name]]
       ethtool eth_options
-
-      NetworkInterfaces[resource[:name]].speed = true if @property_flush[:speed]
-      NetworkInterfaces[resource[:name]].duplex = resource[:mtu] if @property_flush[:duplex]
     end
-    NetworkInterfaces.flush
-    @property_hash = resource.to_hash
   end
 
-  ###### Util methods ######
-
-  SPEED_ALLOWED_VALUES = ['auto','10m','100m','1g','10g']
-  DUPLEX_ALLOWED_VALUES = ['auto', 'full', 'half']
-
-  def netdev_to_speed value
-    case value
-    when '10m'
-      10
-    when '100m'
-      100
-    when '1g'
-      1000
-    when '10g'
-      10000
+  def persist
+    if @property_flush
+      network_interfaces = NetworkInterfaces.parse
+      res_net_interface = network_interfaces[resource[:name]]
+      res_net_interface.onboot = true if @property_flush[:admin]
+      res_net_interface.mtu = resource[:mtu] if @property_flush[:mtu]
+      res_net_interface.speed = LinkSpeed.to_ethtool(@property_flush[:speed]) if @property_flush[:speed]
+      res_net_interface.duplex = resource[:duplex] if @property_flush[:duplex]
+      network_interfaces.flush
     end
   end
 
@@ -110,7 +95,7 @@ Puppet::Type.type(:netdev_interface).provide(:cumulus) do
         duplex = value(out, 'duplex', ':')
         duplex = duplex ? duplex_to_netdev(duplex) : :absent
         speed = value(out, 'speed', ':')
-        speed = speed ? speed_to_netdev(speed): :absent
+        speed = speed ? LinkSpeed.to_netdev(speed): :absent
         new(:name => name,
             :description => name,
             :mtu => value(params, 'mtu').to_i,
@@ -122,30 +107,7 @@ Puppet::Type.type(:netdev_interface).provide(:cumulus) do
       end
     end
 
-    def prefetch(resources)
-      interfaces = instances
-      resources.each do |name, params|
-        if provider = interfaces.find { |interface| interface.name == params[:name] }
-          resources[name].provider = provider
-        end
-      end
-    end
-
-    def speed_to_netdev value
-      case value
-      when /^unknown/i
-        'auto'
-      when /(\d+)Mb\/s/i
-        speed_int = $1.to_i
-        if speed_int < 1000
-          "#{speed_int}m"
-        elsif speed_int >= 1000
-          "#{speed_int / 1000}g"
-        end
-      else
-        raise TypeError, "Speed must be one of the values [#{SPEED_ALLOWED_VALUES.join ','}]"
-      end
-    end
+    DUPLEX_ALLOWED_VALUES = ['auto', 'full', 'half']
 
     def duplex_to_netdev value
       value = value.downcase

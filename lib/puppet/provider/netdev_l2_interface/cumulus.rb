@@ -32,6 +32,9 @@ Puppet::Type.type(:netdev_l2_interface).provide(:cumulus) do
     @property_hash[:ensure] == :present
   end
 
+  def self.flush
+  end
+
   def self.link_master name
     iplink(['-oneline','link', 'show', name ]).match(/master\s+(\S+)/)
   end
