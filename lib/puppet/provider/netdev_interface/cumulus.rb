@@ -8,16 +8,6 @@ Puppet::Type.type(:netdev_interface).provide(:cumulus, :parent => Puppet::Provid
 
   mk_resource_methods
 
-  def initialize(value={})
-    super(value)
-    @property_flush = {}
-    NetworkInterfaces.parse
-  end
-
-  def exists?
-    @property_hash[:ensure] == :present
-  end
-
   def create
     # raise NotImplementedError "Interface creation is not implemented."
     exists? ? (return true) : (return false)

@@ -1,4 +1,16 @@
+$LOAD_PATH.unshift(File.join(File.dirname(__FILE__),"..","..",".."))
+require 'puppet/provider/cumulus/network_interfaces'
+
 class Puppet::Provider::Cumulus < Puppet::Provider
+
+  def initialize(value={})
+    super(value)
+    @property_flush = {}
+  end
+
+  def exists?
+    @property_hash[:ensure] == :present
+  end
 
   def apply
     ## Apply runtime configuration
@@ -17,6 +29,7 @@ class Puppet::Provider::Cumulus < Puppet::Provider
   end
 
   class << self
+
     def prefetch(resources)
       interfaces = instances
       resources.each do |name, params|

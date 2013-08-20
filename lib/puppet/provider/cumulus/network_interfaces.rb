@@ -143,11 +143,16 @@ class NetworkInterfaces
             when 'gateway'
               currently_processing.gateway = value
             when 'pre-up'
-              if value =~ /ethtool\s+-s\s+\w+(.*)/
-                Hash[$1.split.each_slice(2).to_a].each_pair do |k,v|
-                  if currently_processing.responds_to? "#{k}="
-                    currently_processing.send("#{k}=", v)
+              case value
+              when /ethtool/
+                if value =~ /-s\s+(.*)/
+                  Hash[$1.split.each_slice(2).to_a].each_pair do |k,v|
+                    if currently_processing.respond_to? "#{k}="
+                      currently_processing.send("#{k}=", v)
+                    end
                   end
+                else
+                  currently_processing.options[key] << value
                 end
               else
                 currently_processing.options[key] << value
@@ -195,7 +200,7 @@ class Interface
     end
 
     if duplex || speed
-      options = ["pre-up /usr/bin/ethtool #{name} -s"]
+      options = ["  pre-up /usr/bin/ethtool #{name} -s"]
       options << "speed #{speed}" if speed
       options << "duplex #{duplex}" if duplex
       out << options.join(" ")
@@ -290,7 +295,15 @@ class Mapping
 
 end
 
-class Vlan < Interface
+class Bridge < Interface
+
+  def initialize(name)
+    super(name)
+    @ports = []
+  end
+end
+
+class Vlan < Bridge
 end
 
 class Bond < Interface
