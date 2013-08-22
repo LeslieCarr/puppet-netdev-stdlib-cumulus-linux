@@ -1,8 +1,17 @@
-Puppet::Type.type(:netdev_l2_interface).provide(:cumulus) do
+$LOAD_PATH.unshift(File.join(File.dirname(__FILE__),"..","..",".."))
+require 'puppet/provider/cumulus/cumulus_parent'
+require 'puppet/provider/cumulus/network_interfaces'
+
+Puppet::Type.type(:netdev_l2_interface).provide(:cumulus, :parent => Puppet::Provider::Cumulus) do
 
   commands  :iplink => '/sbin/ip', :brctl =>'/sbin/brctl'
 
   mk_resource_methods
+
+  # def vlan_tagging=(value)
+  #   raise "VLAN tagging is always enabled."
+  # end
+
 
   def create
     begin
@@ -28,16 +37,24 @@ Puppet::Type.type(:netdev_l2_interface).provide(:cumulus) do
     brctl(['delbr', resource[:name]])
   end
 
-  def exists?
-    @property_hash[:ensure] == :present
-  end
-
-  def self.flush
-  end
 
   def self.link_master name
     iplink(['-oneline','link', 'show', name ]).match(/master\s+(\S+)/)
   end
+
+
+  def apply
+    brctl(['addif', resource[:untagged_vlan], resource[:name]]) if resource[:untagged_vlan]
+    vlans_by_name = Hash[Puppet::Type.type(:netdev_vlan).instances.map{|vlan| [vlan[:name],vlan]}]
+    resource[:tagged_vlans].each do |vlan|
+      vlan = vlans_by_name[resource[:name]]
+      brctl(['addif', resource[:untagged_vlan], "#{resource[:name]}.#{vlan[:vlan_id]}"]) if vlan
+    end
+  end
+
+  def persist
+  end
+
 
   def self.instances
     interfaces = Puppet::Type.type(:netdev_interface).instances.map {|i| i[:name]}
@@ -45,20 +62,12 @@ Puppet::Type.type(:netdev_l2_interface).provide(:cumulus) do
     l2_interfaces = interfaces - bridges
     l2_interfaces.collect do |i|
       new ({:name => i,
+            :vlan_tagging => :enabled,
             :untagged_vlan => link_master(i) || :absent,
             :tagged_vlans => Dir[File.join SYSFS_NET_PATH, i + '.*'].collect do |subi|
               link_master(File.basename subi)
             end,
             :ensure => :present})
-    end
-  end
-
-  def self.prefetch(resources)
-    interfaces = instances
-    resources.each do |name, params|
-      if provider = interfaces.find { |interface| interface.name == params[:name] }
-        resources[name].provider = provider
-      end
     end
   end
 

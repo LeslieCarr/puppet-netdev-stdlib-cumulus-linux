@@ -24,13 +24,13 @@ Puppet::Type.type(:netdev_vlan).provide(:cumulus, :parent => Puppet::Provider::C
     destroy_bridge(resource[:name])
   end
 
-  def name=(value)
-    raise "VLAN can not be renamed."
-  end
+  # def name=(value)
+  #   raise "VLAN can not be renamed."
+  # end
 
-  def vlan_id=(value)
-    raise "VLAN ID can not be changed."
-  end
+  # def vlan_id=(value)
+  #   raise "VLAN ID can not be changed."
+  # end
 
   def no_mac_learning=(value)
     @property_flush[:no_mac_learning] = value
@@ -93,7 +93,11 @@ Puppet::Type.type(:netdev_vlan).provide(:cumulus, :parent => Puppet::Provider::C
               :no_mac_learning => (aging_time.to_i) / 100 == 0,
               :vlan_id => vlan_id})
       end
+      #  instances_by_name.collect do |name|
+      #    new(:name => name, :provider => :appdmg, :ensure => :installed)
+      # end
     end
+
   end
 
 end
