@@ -77,42 +77,7 @@ Puppet::Type.type(:netdev_interface).provide(:cumulus, :parent => Puppet::Provid
   class << self
 
     def instances
-      iplink(['-oneline','link','show']).lines.select {|i| /link\/ether/ =~ i}.
-      each.collect do |intf|
-        _, name, params = intf.split(':', 3).map {|c| c.strip }
-        name, _ = name.split '@' #take care of the sub-interfaces in format "eth1.100@eth1"
-        out = ethtool(name)
-        duplex = value(out, 'duplex', ':')
-        duplex = duplex ? duplex_to_netdev(duplex) : :absent
-        speed = value(out, 'speed', ':')
-        speed = speed ? LinkSpeed.to_netdev(speed): :absent
-        new(:name => name,
-            :description => name,
-            :mtu => value(params, 'mtu').to_i,
-            :up => value(params, 'state').downcase,
-            :duplex => duplex,
-            :speed => speed,
-            :ensure => :present
-            )
-      end
-    end
-
-    DUPLEX_ALLOWED_VALUES = ['auto', 'full', 'half']
-
-    def duplex_to_netdev value
-      value = value.downcase
-      if DUPLEX_ALLOWED_VALUES.include? value
-        value
-      else
-        raise TypeError, "Duplex must be one of the values [#{DUPLEX_ALLOWED_VALUES.join ','}]"
-      end
-
-    end
-
-    def value text, key, separator=''
-      if text =~ /#{key}#{separator}\s*(\S*)/i
-        $1
-      end
+      interfaces.collect { |i| new(i) }
     end
 
   end

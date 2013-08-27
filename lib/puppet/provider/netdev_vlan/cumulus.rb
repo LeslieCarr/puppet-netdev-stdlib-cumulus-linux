@@ -7,7 +7,6 @@ Puppet::Type.type(:netdev_vlan).provide(:cumulus, :parent => Puppet::Provider::C
 
   commands :brctl => '/sbin/brctl', :iplink => '/sbin/ip'
 
-  SYSFS_NET_PATH = "/sys/class/net"
   NAME_SEP = '_'
   DEFAULT_AGING_TIME = 300
 
@@ -17,19 +16,18 @@ Puppet::Type.type(:netdev_vlan).provide(:cumulus, :parent => Puppet::Provider::C
     unless resource[:name] =~ /^\w+#{NAME_SEP}\d+/
       raise ArgumentError, "VLAN name must be in format <name>#{NAME_SEP}<VLAN ID>"
     end
+    Puppet.debug("#{resource.type}.create #{resource[:name]}")
     create_bridge(resource[:name])
   end
 
   def destroy
+    Puppet.debug("#{resource.type}.destroy #{resource[:name]}")
     destroy_bridge(resource[:name])
   end
 
-  # def name=(value)
-  #   raise "VLAN can not be renamed."
-  # end
-
   # def vlan_id=(value)
-  #   raise "VLAN ID can not be changed."
+  #   # raise "VLAN ID can not be changed."
+  #   @property_flush[:vlan_id] = value
   # end
 
   def no_mac_learning=(value)
@@ -80,24 +78,8 @@ Puppet::Type.type(:netdev_vlan).provide(:cumulus, :parent => Puppet::Provider::C
 
   class << self
     def instances
-      bridges = Dir[File.join SYSFS_NET_PATH, '*'].
-        select{|dir| File.directory? File.join dir, 'bridge'}.
-        collect{|br| File.basename br }
-      bridges.each.collect do |bridge_name|
-        _, vlan = bridge_name.split NAME_SEP
-        vlan_id = vlan ? vlan.to_i : :absent
-        aging_time = File.read(File.join SYSFS_NET_PATH, bridge_name, 'bridge', 'ageing_time')
-        new ({:ensure => :present,
-              :name => bridge_name,
-              # :description => bridge_name,
-              :no_mac_learning => (aging_time.to_i) / 100 == 0,
-              :vlan_id => vlan_id})
-      end
-      #  instances_by_name.collect do |name|
-      #    new(:name => name, :provider => :appdmg, :ensure => :installed)
-      # end
+      bridges.collect { |i| new(i) }
     end
-
   end
 
 end

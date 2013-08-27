@@ -4,14 +4,18 @@ require 'puppet/provider/cumulus/network_interfaces'
 
 Puppet::Type.type(:netdev_l2_interface).provide(:cumulus, :parent => Puppet::Provider::Cumulus) do
 
-  commands  :iplink => '/sbin/ip', :brctl =>'/sbin/brctl'
+  commands  :iplink => '/sbin/ip', :brctl =>'/sbin/brctl',
+    :ethtool  => '/sbin/ethtool'
 
   mk_resource_methods
 
-  # def vlan_tagging=(value)
-  #   raise "VLAN tagging is always enabled."
-  # end
+  def untagged_vlan=(value)
+    @property_flush[:untagged_vlan] = value
+  end
 
+  def tagged_vlans=(value)
+    @property_flush[:tagged_vlans] = value
+  end
 
   def create
     begin
@@ -38,37 +42,38 @@ Puppet::Type.type(:netdev_l2_interface).provide(:cumulus, :parent => Puppet::Pro
   end
 
 
-  def self.link_master name
-    iplink(['-oneline','link', 'show', name ]).match(/master\s+(\S+)/)
-  end
-
-
   def apply
-    brctl(['addif', resource[:untagged_vlan], resource[:name]]) if resource[:untagged_vlan]
-    vlans_by_name = Hash[Puppet::Type.type(:netdev_vlan).instances.map{|vlan| [vlan[:name],vlan]}]
-    resource[:tagged_vlans].each do |vlan|
-      vlan = vlans_by_name[resource[:name]]
-      brctl(['addif', resource[:untagged_vlan], "#{resource[:name]}.#{vlan[:vlan_id]}"]) if vlan
-    end
+    brctl(['addif', @property_flush[:untagged_vlan], resource[:name]]) if @property_flush[:untagged_vlan]
+    vlans = bridges
+    @property_flush[:tagged_vlans].each do |vlan_name|
+      vlan = vlans.find {|b| b[:name] == vlan_name}
+      brctl(['addif', @property_flush[:tagged_vlans], "#{resource[:name]}.#{vlan[:vlan_id]}"]) if vlan
+    end if @property_flush[:tagged_vlans]
   end
 
   def persist
+    Puppet.debug("persist -> @property_flush[:tagged_vlans]=#{@property_flush[:tagged_vlans]}")
+    if @property_flush
+      network_interfaces = NetworkInterfaces.parse
+      if @property_flush[:untagged_vlan]
+        vlan = network_interfaces[@property_flush[:untagged_vlan]]
+        vlan.options['bridge_ports'] << resource[:name]
+      end
+
+      vlans = bridges
+      @property_flush[:tagged_vlans].each do |vlan_name|
+        Puppet.debug("persist tagged_vlan=#{tagged_vlan}")
+        vlan = vlans.find {|b| b[:name] == vlan_name}
+        vlan_intf = network_interfaces[vlan_name]
+        vlan_intf.options['bridge_ports'] << "#{resource[:name]}.#{vlan[:vlan_id]}"
+      end if @property_flush[:tagged_vlans]
+      network_interfaces.flush
+    end
   end
 
 
   def self.instances
-    interfaces = Puppet::Type.type(:netdev_interface).instances.map {|i| i[:name]}
-    bridges = Puppet::Type.type(:netdev_vlan).instances.map {|i| i[:name]}
-    l2_interfaces = interfaces - bridges
-    l2_interfaces.collect do |i|
-      new ({:name => i,
-            :vlan_tagging => :enabled,
-            :untagged_vlan => link_master(i) || :absent,
-            :tagged_vlans => Dir[File.join SYSFS_NET_PATH, i + '.*'].collect do |subi|
-              link_master(File.basename subi)
-            end,
-            :ensure => :present})
-    end
+    l2_interfaces.collect { |i| new(i) }
   end
 
 end
