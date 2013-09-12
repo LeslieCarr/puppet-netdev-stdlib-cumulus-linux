@@ -112,12 +112,14 @@ class Puppet::Provider::Cumulus < Puppet::Provider
     end
 
     def lags
-      self.interfaces.select{|i| /bond\d+/ =~ i[:name]}.collect do |i|
-        {
-          :name => i[:name],
-          :ensure => :present
-        }
+      File.read('/sys/class/net/bonding_masters').split.collect do |i|
+        {:name => i, :ensure => :present, :links => get_bond_slaves(i)}
       end
+    end
+
+    def get_bond_slaves bond
+      slaves_file = File.join SYSFS_NET_PATH, bond, 'bonding', 'slaves'
+      File.read(slaves_file).split
     end
 
     def prefetch(resources)
