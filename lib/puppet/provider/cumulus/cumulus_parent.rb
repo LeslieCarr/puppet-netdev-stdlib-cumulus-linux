@@ -1,4 +1,5 @@
 $LOAD_PATH.unshift(File.join(File.dirname(__FILE__),"..","..",".."))
+require 'puppet/provider/cumulus/bond'
 require 'puppet/provider/cumulus/network_interfaces'
 
 class Puppet::Provider::Cumulus < Puppet::Provider
@@ -112,14 +113,14 @@ class Puppet::Provider::Cumulus < Puppet::Provider
     end
 
     def lags
-      File.read('/sys/class/net/bonding_masters').split.collect do |i|
-        {:name => i, :ensure => :present, :links => get_bond_slaves(i)}
+      Cumulus::Bond.all.collect do |name|
+        bond = Cumulus::Bond.new name
+        {
+          :name => bond.name,
+          :ensure => :present,
+          :links => bond.slaves,
+        }
       end
-    end
-
-    def get_bond_slaves bond
-      slaves_file = File.join SYSFS_NET_PATH, bond, 'bonding', 'slaves'
-      File.read(slaves_file).split
     end
 
     def prefetch(resources)

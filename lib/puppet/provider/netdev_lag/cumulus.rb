@@ -1,5 +1,5 @@
-require 'set'
 $LOAD_PATH.unshift(File.join(File.dirname(__FILE__),"..","..",".."))
+require 'puppet/provider/cumulus/bond'
 require 'puppet/provider/cumulus/cumulus_parent'
 require 'puppet/provider/cumulus/network_interfaces'
 
@@ -25,21 +25,16 @@ Puppet::Type.type(:netdev_lag).provide(:cumulus, :parent => Puppet::Provider::Cu
   end
 
   def create
-    bonding_masters_append "+#{resource[:name]}"
+    Cumulus::Bond.create resource[:name]
   end
 
   def destroy
-    bonding_masters_append "-#{resource[:name]}"
+    Cumulus::Bond.destroy resource[:name]
   end
 
   def apply
-    if @property_flush[:links]
-      existing_slaves = Set.new(get_bond_slaves resource[:name])
-      should_slaves = Set.new(@property_flush[:links])
-      remove_slaves = existing_slaves - should_slaves
-      remove_slaves.each {|i| bond_slave_modify resource[:name], "-#{i}"}
-      should_slaves.each {|i| bond_slave_modify resource[:name], "+#{i}"}
-    end
+    bond = Cumulus::Bond.new resource[:name]
+    bond.slaves = @property_flush[:links] if @property_flush[:links]
     # iplink(['link', 'set', resource[:name], to_updown(@property_flush[:active])]) if @property_flush[:active]
   end
 
@@ -67,20 +62,6 @@ Puppet::Type.type(:netdev_lag).provide(:cumulus, :parent => Puppet::Provider::Cu
     else
       'down'
     end
-  end
-
-  def bonding_masters_append value
-    open(BONDING_MASTERS, 'a') {|f| f << value}
-  end
-
-  def bond_slave_modify bond, value
-    bond_slaves_file = File.join(NET_CLASS, bond, 'bonding', 'slaves')
-    open(bond_slaves_file, 'a') {|f| f << value}
-  end
-
-  def get_bond_slaves bond
-    slaves_file = File.join NET_CLASS, bond, 'bonding', 'slaves'
-    File.read(slaves_file).split
   end
 
 end
