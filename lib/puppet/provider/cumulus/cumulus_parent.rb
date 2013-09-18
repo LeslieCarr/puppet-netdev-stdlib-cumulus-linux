@@ -119,6 +119,7 @@ class Puppet::Provider::Cumulus < Puppet::Provider
           :name => bond.name,
           :ensure => :present,
           :links => bond.slaves,
+          :minimum_links => bond.min_links
         }
       end
     end

@@ -35,6 +35,7 @@ Puppet::Type.type(:netdev_lag).provide(:cumulus, :parent => Puppet::Provider::Cu
   def apply
     bond = Cumulus::Bond.new resource[:name]
     bond.slaves = @property_flush[:links] if @property_flush[:links]
+    bond.min_links = @property_flush[:minimum_links] if @property_flush[:minimum_links]
     # iplink(['link', 'set', resource[:name], to_updown(@property_flush[:active])]) if @property_flush[:active]
   end
 

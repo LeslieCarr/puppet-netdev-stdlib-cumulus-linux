@@ -15,7 +15,7 @@ module Cumulus
     end
 
     def slaves
-      File.read(BOND % [@name, 'slaves']).split
+      get_bonding_property('slaves').split
     end
 
     def slaves=(names)
@@ -24,6 +24,14 @@ module Cumulus
       (existing - to_add).each {|i| remove_slave i}
       to_add.each {|i| add_slave i}
       slaves
+    end
+
+    def min_links
+      get_bonding_property 'min_links'
+    end
+
+    def min_links=(value)
+      set_bonding_property 'min_links', value
     end
 
     def add_slave name
@@ -57,7 +65,24 @@ module Cumulus
 
     private
     def modify_slave value
-      File.open(BOND % [@name, 'slaves'], 'a') {|f| f << value}
+      # File.open(BOND % [@name, 'slaves'], 'a') {|f| f << value}
+      set_bonding_property 'slaves', value
+    end
+
+    def get_bonding_property prop
+      begin
+        File.read(BOND % [@name, prop]).chomp
+      rescue Errno::ENOENT
+        nil
+      end
+    end
+
+    def set_bonding_property prop, value
+      begin
+        File.open(BOND % [@name, prop], 'a') {|f| f << value}
+      rescue Errno::ENOENT
+        # nil
+      end
     end
 
   end
