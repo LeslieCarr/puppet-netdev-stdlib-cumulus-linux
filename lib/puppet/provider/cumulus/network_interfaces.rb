@@ -40,7 +40,7 @@ class NetworkInterfaces
     [
       header,
       all_interfaces.select { |k, v| v.onboot == true }.collect { |k, v| k }.join(" "),
-      all_interfaces.collect { |k, v| v.to_formatted_s }.join("\n"),
+      all_interfaces.collect { |k, v| v.to_formatted_s }.join("\n\n"),
       all_mapping.collect { |i| i.to_formatted_s }.join("\n"),
       all_sources.collect { |i| "source #{i}" }.join("\n")
     ]
@@ -200,7 +200,7 @@ class Interface
     end
 
     if duplex || speed
-      options = ["  pre-up /usr/bin/ethtool #{name} -s"]
+      options = ["  pre-up /sbin/ethtool #{name} -s"]
       options << "speed #{speed}" if speed
       options << "duplex #{duplex}" if duplex
       out << options.join(" ")

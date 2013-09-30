@@ -41,6 +41,10 @@ class Puppet::Provider::Cumulus < Puppet::Provider
     self.bridges
   end
 
+  def routes
+    self.routes
+  end
+
   class << self
 
     DUPLEX_ALLOWED_VALUES = ['auto', 'full', 'half']
@@ -124,21 +128,60 @@ class Puppet::Provider::Cumulus < Puppet::Provider
       end
     end
 
-    def prefetch(resources)
-      raise "Implement self.instances or override prefetch" if not instances
-      instances.each do |prov|
-        if resource = resources[prov.name]
-          resource.provider = prov
-        end
-      end
-      # Puppet.debug("Prefetch->#{resources}")
-      # interfaces = instances
-      # resources.each do |name, params|
-      #   if provider = interfaces.find { |interface| interface.name == params[:name] }
-      #     resources[name].provider = provider
-      #   end
-      # end
-    end
-  end
+    # def routes
+    #   iplink(['route', 'list']).lines.collect do |r|
+    #     route_parts = r.split
+    #     {'route' => route_parts.shift}.merge(Hash[route_parts.each_slice(2).to_a])
+    #   end
+    # end
 
-end
+    def ip_link_addr
+      intfs = {}
+      iplink(['-oneline', 'addr', 'show']).lines.each do |line|
+        line = line.chomp.delete '\\'
+        line_split = line.split
+        line_split.shift
+        name = line_split.shift.chomp ':'
+        options = line_split.shift if line_split.first.match(/<.+>/)
+        intfs[name] ||= {}
+        intfs[name].merge!(Hash[line_split.each_slice(2).to_a])
+        intfs[name].delete_if { |k, v| v.nil? }
+      end
+      intfs
+    end
+
+    def netmask_to_prefix value
+      netmask = IPAddr.new value
+      if netmask.ipv4?
+        s = netmask.to_i ^ IPAddr::IN4MASK.to_i
+        prefix = 32
+      elsif netmask.ipv6?
+        s = netmask.to_i ^ IPAddr::IN6MASK.to_i if netmask.ipv6?
+        prefix = 128
+      end
+
+      while s > 0 do
+          s >>= 1
+          prefix -= 1
+        end
+        prefix.to_s
+      end
+
+      def prefetch(resources)
+        raise "Implement self.instances or override prefetch" if not instances
+        instances.each do |prov|
+          if resource = resources[prov.name]
+            resource.provider = prov
+          end
+        end
+        # Puppet.debug("Prefetch->#{resources}")
+        # interfaces = instances
+        # resources.each do |name, params|
+        #   if provider = interfaces.find { |interface| interface.name == params[:name] }
+        #     resources[name].provider = provider
+        #   end
+        # end
+      end
+    end
+
+  end
