@@ -33,7 +33,7 @@ Puppet::Type.type(:netdev_l3_interface).provide(:cumulus, :parent => Puppet::Pro
     ip_options = []
     if @property_flush
       (ip_options << @property_flush[:ipaddress]) if @property_flush[:ipaddress]
-      (ip_options << ip_options.pop + '/' + self.netmask_to_prefix(@property_flush[:netmask])) if @property_flush[:netmask]
+      (ip_options << ip_options.pop + '/' + netmask_to_prefix(@property_flush[:netmask])) if @property_flush[:netmask]
     end
     unless ip_options.empty?
       ip_options.unshift ['addr', 'add']

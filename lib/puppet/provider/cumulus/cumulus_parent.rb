@@ -36,12 +36,25 @@ class Puppet::Provider::Cumulus < Puppet::Provider
     @property_hash = resource.to_hash
   end
 
-  # def bridges
-  # self.bridges
-  # end
-
   def routes
     self.routes
+  end
+
+  def netmask_to_prefix value
+    netmask = IPAddr.new value
+    if netmask.ipv4?
+      s = netmask.to_i ^ IPAddr::IN4MASK.to_i
+      prefix = 32
+    elsif netmask.ipv6?
+      s = netmask.to_i ^ IPAddr::IN6MASK.to_i if netmask.ipv6?
+      prefix = 128
+    end
+
+    while s > 0
+      s >>= 1
+      prefix -= 1
+    end
+    prefix.to_s
   end
 
   class << self
@@ -169,38 +182,23 @@ class Puppet::Provider::Cumulus < Puppet::Provider
       intfs
     end
 
-    def netmask_to_prefix value
-      netmask = IPAddr.new value
-      if netmask.ipv4?
-        s = netmask.to_i ^ IPAddr::IN4MASK.to_i
-        prefix = 32
-      elsif netmask.ipv6?
-        s = netmask.to_i ^ IPAddr::IN6MASK.to_i if netmask.ipv6?
-        prefix = 128
-      end
 
-      while s > 0 do
-          s >>= 1
-          prefix -= 1
-        end
-        prefix.to_s
-      end
 
-      def prefetch(resources)
-        raise "Implement self.instances or override prefetch" if not instances
-        instances.each do |prov|
-          if resource = resources[prov.name]
-            resource.provider = prov
-          end
+    def prefetch(resources)
+      raise "Implement self.instances or override prefetch" if not instances
+      instances.each do |prov|
+        if resource = resources[prov.name]
+          resource.provider = prov
         end
-        # Puppet.debug("Prefetch->#{resources}")
-        # interfaces = instances
-        # resources.each do |name, params|
-        #   if provider = interfaces.find { |interface| interface.name == params[:name] }
-        #     resources[name].provider = provider
-        #   end
-        # end
       end
+      # Puppet.debug("Prefetch->#{resources}")
+      # interfaces = instances
+      # resources.each do |name, params|
+      #   if provider = interfaces.find { |interface| interface.name == params[:name] }
+      #     resources[name].provider = provider
+      #   end
+      # end
     end
-
   end
+
+end

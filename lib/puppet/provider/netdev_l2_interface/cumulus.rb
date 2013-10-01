@@ -14,7 +14,7 @@ Puppet::Type.type(:netdev_l2_interface).provide(:cumulus, :parent => Puppet::Pro
   end
 
   def tagged_vlans=(value)
-    @property_flush[:tagged_vlans] = value
+    @property_flush[:tagged_vlans] = value.flatten
   end
 
   def create
@@ -59,7 +59,6 @@ Puppet::Type.type(:netdev_l2_interface).provide(:cumulus, :parent => Puppet::Pro
 
     vlans = bridges
     @property_flush[:tagged_vlans].each do |vlan_name|
-      Puppet.debug("persist tagged_vlan=#{tagged_vlan}")
       vlan = vlans.find {|b| b[:name] == vlan_name}
       vlan_intf = network_interfaces[vlan_name]
       vlan_intf.options['bridge_ports'] << "#{resource[:name]}.#{vlan[:vlan_id]}"

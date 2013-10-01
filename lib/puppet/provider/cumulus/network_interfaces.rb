@@ -199,12 +199,14 @@ class Interface
       out << "  #{section} #{self.send property}" if self.send(property)
     end
 
-    if duplex || speed
-      options = ["  pre-up /sbin/ethtool #{name} -s"]
-      options << "speed #{speed}" if speed
-      options << "duplex #{duplex}" if duplex
-      out << options.join(" ")
-    end
+    # Taken out until CM-1290 is fixed
+    # if duplex || speed
+    #   options = []
+    #   options << "  pre-up /sbin/ethtool #{name} -s"
+    #   options << "speed #{speed}" if speed
+    #   options << "duplex #{duplex}" if duplex
+    #   out << options.join(" ")
+    # end
 
     if self.options
       self.options.each_pair do |key, val|
