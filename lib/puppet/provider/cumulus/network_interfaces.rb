@@ -211,7 +211,8 @@ class Interface
         if val.is_a? String
           stanza << "  #{key} #{val}"
         elsif val.is_a? Array
-          val.each { |entry| out << "  #{key} #{entry}" }
+          out << "  #{key} #{val.uniq.sort.join ' '}"
+          # val.each { |entry| out << "  #{key} #{entry}" }
         end
       end
     end

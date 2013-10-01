@@ -37,9 +37,9 @@ class Puppet::Provider::Cumulus < Puppet::Provider
     @property_hash = resource.to_hash
   end
 
-  def bridges
-    self.bridges
-  end
+  # def bridges
+  # self.bridges
+  # end
 
   def routes
     self.routes

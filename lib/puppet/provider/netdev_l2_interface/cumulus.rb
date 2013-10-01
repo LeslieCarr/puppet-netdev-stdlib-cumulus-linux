@@ -41,7 +41,6 @@ Puppet::Type.type(:netdev_l2_interface).provide(:cumulus, :parent => Puppet::Pro
     brctl(['delbr', resource[:name]])
   end
 
-
   def apply
     brctl(['addif', @property_flush[:untagged_vlan], resource[:name]]) if @property_flush[:untagged_vlan]
     vlans = bridges
@@ -52,23 +51,24 @@ Puppet::Type.type(:netdev_l2_interface).provide(:cumulus, :parent => Puppet::Pro
   end
 
   def persist
-    Puppet.debug("persist -> @property_flush[:tagged_vlans]=#{@property_flush[:tagged_vlans]}")
-    if @property_flush
-      network_interfaces = NetworkInterfaces.parse
-      if @property_flush[:untagged_vlan]
-        vlan = network_interfaces[@property_flush[:untagged_vlan]]
-        vlan.options['bridge_ports'] << resource[:name]
-      end
-
-      vlans = bridges
-      @property_flush[:tagged_vlans].each do |vlan_name|
-        Puppet.debug("persist tagged_vlan=#{tagged_vlan}")
-        vlan = vlans.find {|b| b[:name] == vlan_name}
-        vlan_intf = network_interfaces[vlan_name]
-        vlan_intf.options['bridge_ports'] << "#{resource[:name]}.#{vlan[:vlan_id]}"
-      end if @property_flush[:tagged_vlans]
-      network_interfaces.flush
+    network_interfaces = NetworkInterfaces.parse
+    if @property_flush[:untagged_vlan]
+      vlan = network_interfaces[@property_flush[:untagged_vlan]]
+      vlan.options['bridge_ports'] << resource[:name]
     end
+
+    vlans = bridges
+    @property_flush[:tagged_vlans].each do |vlan_name|
+      Puppet.debug("persist tagged_vlan=#{tagged_vlan}")
+      vlan = vlans.find {|b| b[:name] == vlan_name}
+      vlan_intf = network_interfaces[vlan_name]
+      vlan_intf.options['bridge_ports'] << "#{resource[:name]}.#{vlan[:vlan_id]}"
+    end if @property_flush[:tagged_vlans]
+    network_interfaces.flush
+  end
+
+  def bridges
+    Puppet::Provider::Cumulus.bridges
   end
 
 
