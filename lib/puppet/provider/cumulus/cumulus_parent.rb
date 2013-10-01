@@ -85,7 +85,7 @@ class Puppet::Provider::Cumulus < Puppet::Provider
       # end
       ip_link_addr.map do |name, data|
         #take care of the sub-interfaces in format "eth1.100@eth1"
-        name = name.split '@'[0]
+        name = name.split('@')[0]
         ethtool_output = ethtool(name)
         auto_neg = value(ethtool_output, 'Auto-negotiation', ':')
         if auto_neg and auto_neg == 'on'

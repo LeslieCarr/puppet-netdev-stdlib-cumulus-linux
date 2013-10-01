@@ -9,6 +9,12 @@ Puppet::Type.type(:netdev_vlan).provide(:cumulus, :parent => Puppet::Provider::C
 
   NAME_SEP = '_'
   DEFAULT_AGING_TIME = 300
+  DEFAULT_BRIDGE_OPTIONS = {
+    'bridge_stp' => ['on'],
+    'bridge_maxwait' => [5],
+    'bridge_ageing' => [200],
+    'bridge_fd' => [30],
+  }
 
   mk_resource_methods
 
@@ -61,10 +67,7 @@ Puppet::Type.type(:netdev_vlan).provide(:cumulus, :parent => Puppet::Provider::C
     bridge.family = 'inet'
     bridge.method = 'manual'
     bridge.onboot = true
-    bridge.options['bridge_stp'] << 'on'
-    bridge.options['bridge_maxwait'] << [20]
-    bridge.options['bridge_ageing'] << [200]
-    bridge.options['bridge_fd'] << [30]
+    bridge.options.update(DEFAULT_BRIDGE_OPTIONS)
 
     network_interfaces.flush
   end
