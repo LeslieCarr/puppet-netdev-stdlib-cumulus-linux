@@ -14,7 +14,6 @@ class Puppet::Provider::Cumulus < Puppet::Provider
   end
 
   def exists?
-    Puppet.debug("#{resource.type}.exists?")
     @property_hash[:ensure] == :present
   end
 
@@ -67,22 +66,42 @@ class Puppet::Provider::Cumulus < Puppet::Provider
     end
 
     def interfaces
-      iplink(['-oneline','link','show']).lines.select {|i| /link\/ether/ =~ i}.
-      each.collect do |intf|
-        _, name, params = intf.split(':', 3).map {|c| c.strip }
-        name, _ = name.split '@' #take care of the sub-interfaces in format "eth1.100@eth1"
-        out = ethtool(name)
-        duplex = value(out, 'duplex', ':')
-        duplex = duplex ? duplex_to_netdev(duplex) : :absent
-        speed = value(out, 'speed', ':')
-        speed = speed ? LinkSpeed.to_netdev(speed): :absent
-        {:name => name,
-         :description => name,
-         :mtu => value(params, 'mtu').to_i,
-         :up => value(params, 'state').downcase,
-         :duplex => duplex,
-         :speed => speed,
-         :ensure => :present}
+      # iplink(['-oneline','link','show']).lines.select {|i| /link\/ether/ =~ i}.
+      # each.collect do |intf|
+      #   _, name, params = intf.split(':', 3).map {|c| c.strip }
+      #   name, _ = name.split '@' #take care of the sub-interfaces in format "eth1.100@eth1"
+      #   out = ethtool(name)
+      #   duplex = value(out, 'duplex', ':')
+      #   duplex = duplex ? duplex_to_netdev(duplex) : :absent
+      #   speed = value(out, 'speed', ':')
+      #   speed = speed ? LinkSpeed.to_netdev(speed): :absent
+      #   {:name => name,
+      #    :description => name,
+      #    :mtu => value(params, 'mtu').to_i,
+      #    :up => value(params, 'state').downcase,
+      #    :duplex => duplex,
+      #    :speed => speed,
+      #    :ensure => :present}
+      # end
+      ip_link_addr.map do |name, data|
+        #take care of the sub-interfaces in format "eth1.100@eth1"
+        name = name.split '@'[0]
+        ethtool_output = ethtool(name)
+        auto_neg = value(ethtool_output, 'Auto-negotiation', ':')
+        if auto_neg and auto_neg == 'on'
+          duplex = :auto
+        else
+          duplex = value(ethtool_output, 'duplex', ':') || :absent
+          duplex = duplex_to_netdev(duplex) if duplex != :absent
+        end
+        {
+          :name => name,
+          :description => name,
+          :mtu => data['mtu'].to_i,
+          :admin => data['state'].downcase,
+          :duplex => duplex,
+          :speed => LinkSpeed.to_netdev(data['speed']),
+        }
       end
     end
 
@@ -94,7 +113,7 @@ class Puppet::Provider::Cumulus < Puppet::Provider
         {:name => i,
          :ensure => :present,
          # :vlan_tagging => :enabled,
-         :untagged_vlan => (link_master(i) or :absent),
+         :untagged_vlan => (link_master(i) || :absent),
          :tagged_vlans => Dir[File.join SYSFS_NET_PATH, i + '.*'].collect do |subi|
            link_master(File.basename subi)
         end.compact}

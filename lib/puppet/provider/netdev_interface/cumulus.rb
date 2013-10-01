@@ -77,7 +77,7 @@ Puppet::Type.type(:netdev_interface).provide(:cumulus, :parent => Puppet::Provid
   class << self
 
     def instances
-      interfaces.collect { |i| new(i) }
+      interfaces.collect { |i| new(i.merge({:ensure => :present}) ) }
     end
 
   end
