@@ -30,6 +30,10 @@ class NetworkInterfaces
     interface
   end
 
+  def contains?(name)
+    all_interfaces.include? name
+  end
+
   def header
     "# This file is generated"
   end
@@ -174,6 +178,9 @@ end
 
 
 class Interface
+  DEFAULT_METHOD = 'manual'
+  DEFAULT_FAMILY = 'inet'
+
   attr_reader :name
   attr_accessor :up, :speed, :mtu, :duplex,
     :ip_address, :netmask, :gateway, :method,
@@ -182,7 +189,7 @@ class Interface
   def initialize(name)
     @name = name
     @onboot = false
-    @method = 'dhcp'
+    @method = DEFAULT_METHOD
     @family = 'inet'
     @options = Hash.new { |hash, key| hash[key] = [] }
   end

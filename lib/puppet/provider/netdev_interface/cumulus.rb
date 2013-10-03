@@ -9,9 +9,15 @@ Puppet::Type.type(:netdev_interface).provide(:cumulus, :parent => Puppet::Provid
   mk_resource_methods
 
   def create
-    # raise NotImplementedError "Interface creation is not implemented."
+    case resource[:name]
+    when /(swp\d+)\.(\d+)/
+      iplink(['link', 'add', 'link', $1, 'name',
+        resource[:name], 'type', 'vlan', 'id', $2])
+      @property_flush = resource.to_hash
+      flush
+      @property_hash[:ensure] = :present
+    end
     exists? ? (return true) : (return false)
-
   end
 
   def destroy

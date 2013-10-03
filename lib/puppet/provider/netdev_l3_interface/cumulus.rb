@@ -55,19 +55,21 @@ Puppet::Type.type(:netdev_l3_interface).provide(:cumulus, :parent => Puppet::Pro
   end
 
   def self.instances
-    ip_link_addr.collect do |k,v|
+    interfaces = NetworkInterfaces.parse
+    ip_link_addr.collect do |name,v|
       inet = v['inet']  if v['inet']
       inet = v['inet6'] if not inet and v['inet6']
       if inet
         ipaddress = inet.split('/')[0]
         netmask = IPAddr.new(inet).inspect.split('/')[1].chomp('>')
       end
-      new({
-            :name => k,
-            :ensure => :present,
-            :ipaddress => ipaddress || :absent,
-            :netmask => netmask || :absent,
-      })
+      method = interfaces[name].method if interfaces.contains?(name)
+      new({:name => name,
+           :ensure => :present,
+           :ipaddress => ipaddress || :absent,
+           :netmask => netmask || :absent,
+           :method =>  method || :absent,
+           })
     end
   end
 
@@ -88,4 +90,4 @@ Puppet::Type.type(:netdev_l3_interface).provide(:cumulus, :parent => Puppet::Pro
   #     prefix.to_s
   #   end
 
-  end
+end

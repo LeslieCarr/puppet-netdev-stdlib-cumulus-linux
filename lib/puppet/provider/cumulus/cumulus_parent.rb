@@ -174,6 +174,8 @@ class Puppet::Provider::Cumulus < Puppet::Provider
         line_split = line.split
         line_split.shift
         name = line_split.shift.chomp ':'
+        #take care of the sub-interfaces in format "eth1.100@eth1"
+        name = name.split('@')[0]
         options = line_split.shift if line_split.first.match(/<.+>/)
         intfs[name] ||= {}
         intfs[name].merge!(Hash[line_split.each_slice(2).to_a])
