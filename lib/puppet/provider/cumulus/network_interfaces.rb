@@ -35,19 +35,49 @@ class NetworkInterfaces
   end
 
   def header
-    "# This file is generated"
+    "#This file is generated using netdev-cumulus-linux"
   end
 
   def flush(file=NETWORK_INTERFACES)
     # Flush content to file
-    content = "%s\n\nauto %s\n\n%s\n\n%s\n%s\n" %
+    # The order needs to be as follows:
+    # loopback(s), bond, hard/soft interfaces, bridges.
+    # Place auto before interface for readability
+
+    loopbacks = []
+    bonds = []
+    hard_soft_interfaces = []
+    bridges = []
+
+    all_interfaces.each { |name, iface|
+      case
+      when iface.method == 'loopback'
+        loopbacks << iface
+      when iface.options.has_key?('bond-slaves')
+        bonds << iface
+      when iface.options.has_key?('bridge_ports')
+        bridges << iface
+      else
+        hard_soft_interfaces << iface
+      end
+    }
+
+    #Interfaces go after sub-interfaces, eth's before swp's
+    hard_soft_interfaces = hard_soft_interfaces.sort_by {|i| [i.name, i.name.length]}
+
+    content = "#{header}\n"
     [
-      header,
-      all_interfaces.select { |k, v| v.onboot == true }.collect { |k, v| k }.join(" "),
-      all_interfaces.collect { |k, v| v.to_formatted_s }.join("\n\n"),
-      all_mapping.collect { |i| i.to_formatted_s }.join("\n"),
-      all_sources.collect { |i| "source #{i}" }.join("\n")
-    ]
+      [loopbacks, 'Loopback(s)'],
+      [bonds, 'Bond interfaces'],
+      [hard_soft_interfaces, 'Hard/soft interface(s)'],
+      [bridges, 'Bridge(s)']
+    ].each do |(type, name)|
+      content << "\n" << " #{name} ".center(40, '#') << "\n"
+      type.each do |iface|
+        content << "\nauto #{iface.name}\n" if iface.onboot
+        content << "#{iface.to_formatted_s}\n"
+      end
+    end
     File.open(file, 'w') { |f| f.write(content) }
   end
 
@@ -220,8 +250,8 @@ class Interface
         if val.is_a? String
           stanza << "  #{key} #{val}"
         elsif val.is_a? Array
-          out << "  #{key} #{val.uniq.sort.join ' '}"
-          # val.each { |entry| out << "  #{key} #{entry}" }
+          # out << "  #{key} #{val.uniq.sort.join ' '}"
+          val.each { |entry| out << "  #{key} #{entry}" }
         end
       end
     end
