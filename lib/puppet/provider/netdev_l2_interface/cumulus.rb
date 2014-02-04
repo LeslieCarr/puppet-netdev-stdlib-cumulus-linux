@@ -23,11 +23,7 @@ Puppet::Type.type(:netdev_l2_interface).provide(:cumulus, :parent => Puppet::Pro
       resource[:tagged_vlans].flatten.each do |vlan|
         _, id = vlan.split '_'
         sub_if = "#{resource[:name]}.#{id}"
-        begin
-          iplink(['link', 'show', sub_if])
-        rescue
-          iplink(['link', 'add', 'link', resource[:name], 'name', sub_if, 'type', 'vlan', 'id', id])
-        end
+        up_sub_if resource[:name], vlan
         brctl(['addif', vlan, sub_if])
       end if resource[:tagged_vlans]
     rescue
@@ -47,6 +43,7 @@ Puppet::Type.type(:netdev_l2_interface).provide(:cumulus, :parent => Puppet::Pro
     @property_flush[:tagged_vlans].each do |vlan_name|
       vlan = vlans.find {|b| b[:name] == vlan_name}
       brctl(['addif', @property_flush[:tagged_vlans], "#{resource[:name]}.#{vlan[:vlan_id]}"]) if vlan
+      up_sub_if resource[:name], vlan_name
     end if @property_flush[:tagged_vlans]
   end
 
@@ -64,6 +61,16 @@ Puppet::Type.type(:netdev_l2_interface).provide(:cumulus, :parent => Puppet::Pro
       vlan_intf.options['bridge_ports'] << "#{resource[:name]}.#{vlan[:vlan_id]}"
     end if @property_flush[:tagged_vlans]
     network_interfaces.flush
+  end
+
+  def up_sub_if(iface, vlan_name)
+    _, id = vlan_name.split '_'
+    subiface = "#{iface}.#{id}"
+    begin
+        iplink(['link', 'show', subiface])
+    rescue Puppet::ExecutionFailure
+        iplink(['link', 'add', 'link', iface, 'name', subiface, 'type', 'vlan', 'id', id])
+    end
   end
 
   def bridges
