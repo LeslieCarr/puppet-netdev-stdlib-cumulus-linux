@@ -1,0 +1,24 @@
+{
+  "operatingsystem_support": [
+    {
+      "operatingsystem": "CumulusLinux",
+      "operatingsystemmajrelease": [
+        "1",
+        "2"
+      ]
+    }
+  ],
+  "requirements": [
+    {
+      "name": "pe",
+      "version_requirement": "3.x"
+    },
+    {
+      "name": "puppet",
+      "version_requirement": [
+        "2.x",
+        "3.x"
+      ]
+    }
+  ]
+}
