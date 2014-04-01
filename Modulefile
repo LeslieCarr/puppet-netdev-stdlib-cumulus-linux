@@ -1,4 +1,4 @@
-name    'cumuluslinux-netdev-stdlib'
+name    'cumuluslinux-netdev_stdlib'
 version '0.0.1'
 source 'https://github.com/CumulusNetworks/puppet-netdev-stdlib-cumulus-linux'
 author 'Sergey Sudakovich, Cumulus Networks'
