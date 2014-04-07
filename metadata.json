@@ -1,9 +1,4 @@
 {
-  "operatingsystem_support": [
-    {
-      "operatingsystem": "CumulusLinux",
-    }
-  ],
   "requirements": [
     {
       "name": "pe",
